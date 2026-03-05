@@ -1,0 +1,254 @@
+# C/C++ 실습 환경 (VS Code + MSYS2 UCRT64 + CMake)
+
+## 프로젝트 구조
+
+```
+C:\hello
+├─ .gemini/
+│  └─ settings.json         ← Gemini Agent Mode 설정
+├─ .vscode/                 ← VS Code 설정 (수정하지 마세요)
+│  ├─ settings.json
+│  ├─ tasks.json
+│  ├─ launch.json
+│  └─ c_cpp_properties.json
+├─ CMakeLists.txt           ← 루트 CMake 설정
+└─ labs/                    ← 실습 과제 폴더
+   ├─ CMakeLists.txt        ← q* 폴더 자동 탐색
+   ├─ q01/
+   │  ├─ CMakeLists.txt
+   │  └─ main.cpp
+   └─ q02/
+      ├─ CMakeLists.txt
+      └─ main.cpp
+```
+
+## 1. 사전 준비
+
+### 1-1. MSYS2 설치
+- 설치 경로: **반드시 `C:\msys64`** (기본값 유지)
+- 다운로드: https://www.msys2.org
+
+### 1-2. UCRT64 도구 설치
+MSYS2 터미널(UCRT64)을 열고 아래 명령 실행:
+
+```bash
+pacman -Syu
+pacman -S mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-gdb mingw-w64-ucrt-x86_64-cmake
+```
+
+설치 확인:
+
+```bash
+g++ --version       # GCC 확인
+gdb --version       # 디버거 확인
+cmake --version     # CMake 확인
+```
+
+### 1-3. VS Code 확장 설치
+- **C/C++** (Microsoft)
+- **CMake Tools** (Microsoft)
+
+## 2. 빌드 & 실행
+
+### Ctrl+Shift+B (기본 빌드)
+전체 프로젝트(모든 lab)를 한번에 빌드합니다.
+
+### F5 (디버그 실행)
+1. VS Code 하단 상태 표시줄에서 **CMake 빌드 타깃**을 선택 (예: `lab_q01`)
+2. `F5`를 누르면 해당 타깃만 빌드 후 **디버거(GDB)가 연결된 상태**로 실행됩니다.
+3. 브레이크포인트를 설정하고 단계별 실행이 가능합니다.
+
+### Ctrl+F5 (디버그 없이 실행)
+`Ctrl+F5`를 누르면 디버거 **없이** 프로그램만 실행됩니다.
+브레이크포인트가 동작하지 않으며 변수/콜스택 확인이 불가능합니다.
+
+### 터미널에서 직접 빌드 (참고)
+
+```bash
+cmake -S . -B build -G "MinGW Makefiles"
+cmake --build build
+```
+
+특정 타깃만 빌드:
+
+```bash
+cmake --build build --target lab_q01
+```
+
+## 3. 과제 추가 방법
+
+새 과제 `q03`을 추가하려면:
+
+**1단계.** `labs/q03/` 폴더를 만들고 `main.cpp`를 작성합니다.
+
+**2단계.** `labs/q01/CMakeLists.txt`를 `labs/q03/`에 복사합니다.
+
+```
+labs/q03/
+├─ CMakeLists.txt    ← q01에서 복사 (수정 불필요)
+└─ main.cpp          ← 과제 코드 작성
+```
+
+끝입니다. `labs/CMakeLists.txt`가 `q*` 폴더를 자동 탐색하므로 다른 파일은 수정할 필요가 없습니다.
+
+빌드 타깃 이름은 자동으로 `lab_q03`이 됩니다.
+
+## 4. 제출 전 체크리스트
+
+1. VS Code 기본 터미널이 **MSYS2 UCRT64**인지 확인
+2. GDB 경로가 **UCRT64**인지 확인 (`C:\msys64\ucrt64\bin\gdb.exe`)
+3. 하단 상태 표시줄의 Launch Target이 실제 타깃(`lab_q01`, `lab_q02` 등)인지 확인
+4. `Ctrl+Shift+B` → 빌드 성공
+5. `Ctrl+F5` → 실행 성공
+6. `F5` → 디버그 시작 성공
+7. `build/compile_commands.json` 파일 생성 확인
+8. 실행 시 `0xc0000135` 또는 `api-ms-win-crt-*` 에러가 나면 → **5. 문제 해결** 참고
+
+## 5. 문제 해결
+
+| 증상 | 해결 |
+|------|------|
+| `g++`/`cmake` 명령을 못 찾음 | MSYS2 UCRT64 터미널에서 1-2 설치 명령 재실행 |
+| VS Code에서 빌드 실패 | VS Code를 완전히 종료 후 재실행 |
+| IntelliSense 헤더 오류 (빨간 밑줄) | `Ctrl+Shift+P` → "C/C++: Edit Configurations" → compilerPath가 `C:\msys64\ucrt64\bin\g++.exe`인지 확인 |
+| 디버그 시 프로그램 못 찾음 | 하단 상태 표시줄에서 올바른 CMake 타깃을 선택했는지 확인 |
+| `where g++` 결과가 여러 개 | `mingw64`와 `ucrt64` 혼용 금지 — `ucrt64\bin` 하나만 PATH에 유지 |
+| 실행 시 `api-ms-win-crt-*.dll` 못 찾음 | 아래 **DLL 로딩 오류** 항목 참고 |
+
+### DLL 로딩 오류 (`api-ms-win-crt-*.dll` / `0xc0000135`)
+
+실행 시 다음과 같은 에러가 발생할 수 있습니다:
+
+```
+error while loading shared libraries: api-ms-win-crt-string-l1-1-0.dll:
+cannot open shared object file: No such file or directory
+```
+
+**원인:** MSYS Bash 터미널과 Windows 디버거/실행기의 **실행 계층 충돌**입니다.
+
+- `cppdbg`(WindowsDebugLauncher.exe)는 Windows 프로세스 체인으로 실행되어야 하는데, MSYS Bash 경로를 경유하면서 PATH가 꼬임
+- Windows는 PATH 구분자로 `;`을 쓰고, MSYS/Linux는 `:`을 씀 — Bash 환경에 Windows식 PATH를 직접 주입하면 경로가 깨져서 런타임 DLL을 못 찾게 됨
+
+**해결 방법 (이 프로젝트의 설정):**
+
+1. **터미널 역할 분리**
+   - 사용자 기본 터미널: **MSYS2 UCRT64** 유지 (개발 편의)
+   - 자동 실행(빌드/디버그): **cmd.exe**로 고정 (`automationProfile.windows`)
+
+2. **디버그 콘솔 분리**
+   - launch.json의 `console`을 `internalConsole`로 사용하여 Bash 경유 최소화
+
+3. **PATH 정리**
+   - 디버그 환경 PATH: `C:\Windows\System32;C:\msys64\ucrt64\bin;...` (Windows 시스템 경로 우선)
+   - 터미널 전역 PATH 오버라이드(`terminal.integrated.env.windows`) 제거
+   - MSYS2 터미널에 `MSYS2_PATH_TYPE=inherit` 설정으로 Windows PATH 자연 상속
+
+**확인 방법:**
+
+```bash
+echo $MSYSTEM          # UCRT64여야 정상
+echo $MSYS2_PATH_TYPE  # inherit여야 정상
+```
+
+**한 줄 요약:** 컴파일은 성공했지만 실행 계층과 PATH가 섞여 디버거 시작 시 DLL 로딩이 실패한 문제이며, **터미널/디버그 환경 분리 + PATH 정리**로 해결합니다.
+
+## 6. Gemini Code Assist Agent Mode (Windows)
+
+VS Code에서 Gemini Code Assist의 Agent Mode를 사용하려면 아래 설정이 필요합니다.
+
+### 6-1. Preview Features 활성화
+
+Agent Mode는 Preview 기능이므로 **프로젝트 레벨**에서 활성화해야 합니다.
+이 프로젝트에는 이미 `.gemini/settings.json`이 포함되어 있습니다.
+
+```json
+{ "general": { "previewFeatures": true } }
+```
+
+> **주의:** 시스템 레벨(`C:\Users\<username>\.gemini\settings.json`)에 설정해도
+> VS Code Agent Mode에는 적용되지 않습니다. 반드시 프로젝트 루트의
+> `.gemini/settings.json`에 설정해야 합니다.
+> ([Google 공식 문서](https://developers.google.com/gemini-code-assist/docs/gemini-3))
+
+### 6-2. Windows 경로 문제: Non-ASCII 사용자 이름
+
+Windows 사용자 이름에 **한글 등 non-ASCII 문자**가 포함되어 있으면
+VS Code 확장 경로(`C:\Users\한글이름\.vscode\extensions\...`)에서
+UTF-8 인코딩 오류가 발생하여 Agent Mode가 동작하지 않을 수 있습니다.
+
+**해결 방법:** extensions 디렉토리를 ASCII 경로로 이동합니다.
+
+```powershell
+# 방법 1: 환경변수 (권장, 영구 적용)
+setx VSCODE_EXTENSIONS "C:\VSCode\extensions"
+
+# 방법 2: 심볼릭 링크
+mklink /D "%USERPROFILE%\.vscode\extensions" "C:\VSCode\extensions"
+
+# 방법 3: 실행 시 플래그 (매번 지정 필요)
+code --extensions-dir="C:\VSCode\extensions"
+```
+
+관련 이슈:
+- [vscode #206512](https://github.com/microsoft/vscode/issues/206512) — extensions 경로의 non-ASCII 문자로 확장 실패
+- [cloud-code-vscode #1181](https://github.com/GoogleCloudPlatform/cloud-code-vscode/issues/1181) — non-UTF-8 로캘에서 Agent 중단
+
+### 6-3. VS Code User Setup vs System Setup (bin 폴더 문제)
+
+VS Code에는 두 가지 설치 방식이 있으며, 경로가 다릅니다.
+
+| 설치 방식 | 경로 |
+|-----------|------|
+| **User Setup** | `C:\Users\<username>\AppData\Local\Programs\Microsoft VS Code` |
+| **System Setup** | `C:\Program Files\Microsoft VS Code` |
+
+User Setup에서 System Setup으로 (또는 그 반대로) **전환 설치**하면
+Gemini Code Assist 확장이 이전 설치의 `bin/` 폴더 경로를 참조하여
+Agent Mode 활성화에 실패할 수 있습니다.
+
+**증상:** Agent Mode에서 명령 실행 불가, "Failed to connect" 오류
+
+**해결 방법:** VS Code 설치 루트의 `bin/` 폴더를 확장이 참조하는
+commit-hash 디렉토리 안에 수동 복사합니다.
+
+```
+VS Code 설치 루트/
+├─ bin/                    ← 이 폴더를
+│  ├─ code.cmd
+│  └─ ...
+└─ <commit-hash>/          ← 이 안에 복사
+   ├─ bin/                 ← (복사된 bin)
+   └─ resources/
+```
+
+```powershell
+# 예시 (commit-hash는 설치마다 다름, 실제 폴더명 확인 필요)
+$vscode = "$env:LOCALAPPDATA\Programs\Microsoft VS Code"
+$hash = Get-ChildItem $vscode -Directory | Where-Object { $_.Name -match '^[0-9a-f]{10}' }
+Copy-Item "$vscode\bin" "$vscode\$($hash.Name)\bin" -Recurse -Force
+```
+
+> **참고:** 이 작업은 VS Code **업데이트마다 반복**해야 합니다.
+> 가능하면 한 가지 설치 방식만 사용하고 전환하지 않는 것이 좋습니다.
+>
+> 이 문제는 **Cursor IDE** 등 VS Code 포크에서도 동일하게 발생합니다.
+> ([참고](https://dredyson.com/fix-gemini-code-assist-agent-mode-in-cursor-my-complete-step-by-step-workaround-after-6-months-of-struggle/))
+
+## 7. 환경 설정 요약 (`.vscode/` 내용 설명)
+
+이 프로젝트의 `.vscode/` 설정은 **시스템 PATH에 의존하지 않고** 도구 경로를 직접 지정합니다. 따라서 학생 PC마다 PATH가 달라도 동일하게 동작합니다.
+
+핵심 설계: **MSYS 터미널과 Windows 디버거는 실행 계층이 다르므로 역할을 분리**합니다.
+
+- **settings.json**:
+  - 기본 터미널: MSYS2 UCRT64 (`msys2_shell.cmd -ucrt64`), `MSYS2_PATH_TYPE=inherit`로 Windows PATH 상속
+  - 자동화 프로필(`automationProfile.windows`): **cmd.exe**로 고정 — 빌드/디버그 Task가 Bash를 경유하지 않도록 분리
+  - CMake 경로/Generator 명시
+- **tasks.json**: CMake configure + build Task 정의 (`Ctrl+Shift+B` 연결)
+- **launch.json**:
+  - GDB 디버거 경로 고정 (`C:\msys64\ucrt64\bin\gdb.exe`)
+  - 디버그 콘솔: `internalConsole` — Bash 경유 없이 Windows 프로세스 체인으로 실행
+  - 디버그 PATH: `C:\Windows\System32;C:\msys64\ucrt64\bin;...` (Windows 시스템 경로 우선)
+  - CMake 타깃 자동 연결 (`F5` 연결)
+- **c_cpp_properties.json**: IntelliSense가 UCRT64 컴파일러와 `compile_commands.json`을 사용하도록 지정
+# 2026_spring_cpp
